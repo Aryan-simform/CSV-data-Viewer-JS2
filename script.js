@@ -7,8 +7,94 @@ const state = {
     columns: [],
     page: 1,
     pageSize: 20,
-    columnMeta: {} // future: visibility, width, order
+    columnMeta: {}, // future: visibility, width, order
+    sort: {
+        column: "country",
+        direction: "desc", //"asc" | "desc"
+    },
+    globalFilter: "new york"
 };
+
+function paginate(rows) {
+    const start = (state.page - 1) * state.pageSize;
+    return rows.slice(start, start + state.pageSize);
+}
+
+function visibleColumns() {
+    return state.columns.filter(
+        c => state.columnMeta[c]?.visible !== false
+    );
+}
+
+function sortRows(rows) {
+    const { column, direction } = state.sort;
+    if (!column || !direction) return rows;
+
+    const sorted = [...rows].sort((a, b) => {
+        let va = a[column];
+        let vb = b[column];
+
+        if (va == null) return 1;
+        if (vb == null) return -1;
+
+        // numeric
+        if (typeof va === "number" && typeof vb === "number") {
+            return direction === "asc" ? va - vb : vb - va;
+        }
+
+        // date (ISO string safe)
+        const da = Date.parse(va);
+        const db = Date.parse(vb);
+        if (!Number.isNaN(da) && !Number.isNaN(db)) {
+            return direction === "asc" ? da - db : db - da;
+        }
+
+        // string
+        return direction === "asc"
+            ? String(va).localeCompare(String(vb))
+            : String(vb).localeCompare(String(va));
+    });
+
+    return sorted;
+}
+
+function filterRows(rows) {
+    const q = state.globalFilter.trim().toLowerCase();
+    if (!q) return rows;
+
+    return rows.filter(row => {
+        return state.columns.some(col => {
+            const v = row[col];
+            if (v == null) return false;
+            return String(v).toLowerCase().includes(q);
+        });
+    });
+}
+
+function setGlobalFilter(value){
+  setState({
+    globalFilter:value,
+    page:1
+  });
+}
+function toggleSort(column){
+  const {column:current, direction} = state.sort;
+
+  let nextDir = "asc";
+
+  if(current===column){
+    if(direction==="asc") nextDir="desc";
+    else if(direction==="desc") nextDir=null;
+  }
+
+  setState({
+    sort:{
+      column: nextDir ? column : null,
+      direction: nextDir
+    },
+    page:1
+  });
+}
 
 /* ---------- STATE ---------- */
 function setState(patch) {
@@ -18,20 +104,22 @@ function setState(patch) {
 
 /* ---------- SELECTOR ---------- */
 function getViewData() {
-    const start = (state.page - 1) * state.pageSize;
-    const rows = state.data.slice(start, start + state.pageSize);
+    let rows = state.data;
 
-    const visibleColumns = state.columns.filter(
-        c => state.columnMeta[c]?.visible !== false
-    );
+    rows = filterRows(rows);
+    rows = sortRows(rows);
+    const paged = paginate(rows);
 
-    return { rows, columns: visibleColumns };
+    return {
+        rows: paged,
+        columns: visibleColumns(),
+        total: rows.length
+    };
 }
-
 /* ---------- RENDER ---------- */
 function render() {
     const { rows, columns } = getViewData();
-    renderTable(rows, columns);
+    renderTable(rows, columns,state.sort);
 }
 /* ---------- DATA PIPELINE ---------- */
 function initData(csvText) {

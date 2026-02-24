@@ -88,7 +88,7 @@ export function inferTypes(rows) {
         )
     );
 }
-export function renderTable(rows, columns) {
+export function renderTable(rows, columns,sort) {
     const table = document.getElementById("datatable");
     table.innerHTML = "";
 
@@ -97,6 +97,7 @@ export function renderTable(rows, columns) {
     columns.forEach(col => {
         const th = document.createElement("th");
         th.textContent = col.replace("_", " ");
+        if(sort.column === col)th.textContent += sort.direction ==="asc" ? " &darr": " &uarr";  
         headerRow.appendChild(th);
     });
 
