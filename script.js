@@ -1,29 +1,81 @@
 "use strict";
-import { inferTypes, parseCSV, renderTable, } from "./utils.js";
+import { inferTypes, parseCSV, renderTable,formatColumnLabel } from "./utils.js";
 //Date format is  YYYY-MM-DD
 
 const state = {
     data: [],
     columns: [],
     page: 1,
-    pageSize: 20,
-    columnMeta: {}, // future: visibility, width, order
-    sort: {
-        column: "country",
-        direction: "desc", //"asc" | "desc"
-    },
-    globalFilter: "new york"
-};
+    pageSize: 25,
+    columnMeta: {
 
+    }, // future: visibility, width, order
+    sort: {
+        column: "",
+        direction: "", //"asc" | "desc"
+    },
+    globalFilter: "",
+};
+function reset() {
+    setState({
+        sort: { column: "", direction: "" },
+        globalFilter: "",
+        page: 1,
+        pageSize: 25,
+    });
+}
 function paginate(rows) {
     const start = (state.page - 1) * state.pageSize;
     return rows.slice(start, start + state.pageSize);
 }
 
+function showAllColumns(){
+  const meta = Object.fromEntries(
+    state.columns.map(c=>[c,{visible:true}])
+  );
+
+  setState({columnMeta:meta});
+}
 function visibleColumns() {
-    return state.columns.filter(
-        c => state.columnMeta[c]?.visible !== false
-    );
+    return state.columns.filter((c) => state.columnMeta[c]?.visible !== false);
+}
+function toggleColumn(col){
+  const current = state.columnMeta[col]?.visible !== false;
+
+  const visibleCount = Object.values(state.columnMeta)
+    .filter(m=>m.visible!==false).length;
+
+  if(visibleCount===1 && current) return;
+
+  setState({
+    columnMeta:{
+      ...state.columnMeta,
+      [col]:{
+        ...state.columnMeta[col],
+        visible: !current
+      }
+    }
+  });
+}
+function renderColumnPanel(){
+  const list = document.getElementById("columnList");
+  if(!list) return;
+
+  list.innerHTML="";
+
+  state.columns.forEach(col=>{
+    const label = document.createElement("label");
+
+    const input = document.createElement("input");
+    input.type="checkbox";
+    input.checked = state.columnMeta[col]?.visible !== false;
+
+    input.dataset.action="toggleColumn";
+    input.dataset.col=col;
+
+    label.append(input," ",formatColumnLabel(col));
+    list.appendChild(label);
+  });
 }
 
 function sortRows(rows) {
@@ -62,8 +114,8 @@ function filterRows(rows) {
     const q = state.globalFilter.trim().toLowerCase();
     if (!q) return rows;
 
-    return rows.filter(row => {
-        return state.columns.some(col => {
+    return rows.filter((row) => {
+        return state.columns.some((col) => {
             const v = row[col];
             if (v == null) return false;
             return String(v).toLowerCase().includes(q);
@@ -71,29 +123,30 @@ function filterRows(rows) {
     });
 }
 
-function setGlobalFilter(value){
-  setState({
-    globalFilter:value,
-    page:1
-  });
+function setGlobalFilter(value) {
+    setState({
+        globalFilter: value,
+        page: 1,
+    });
 }
-function toggleSort(column){
-  const {column:current, direction} = state.sort;
 
-  let nextDir = "asc";
+function toggleSort(column) {
+    const { column: current, direction } = state.sort;
 
-  if(current===column){
-    if(direction==="asc") nextDir="desc";
-    else if(direction==="desc") nextDir=null;
-  }
+    let nextDir = "asc";
 
-  setState({
-    sort:{
-      column: nextDir ? column : null,
-      direction: nextDir
-    },
-    page:1
-  });
+    if (current === column) {
+        if (direction === "asc") nextDir = "desc";
+        else if (direction === "desc") nextDir = "";
+    }
+
+    setState({
+        sort: {
+            column: nextDir ? column : "",
+            direction: nextDir,
+        },
+        page: 1,
+    });
 }
 
 /* ---------- STATE ---------- */
@@ -113,14 +166,29 @@ function getViewData() {
     return {
         rows: paged,
         columns: visibleColumns(),
-        total: rows.length
+        total: rows.length,
     };
 }
 /* ---------- RENDER ---------- */
 function render() {
-    const { rows, columns } = getViewData();
-    renderTable(rows, columns,state.sort);
+    const { rows, columns, total } = getViewData();
+    renderTable(rows, columns, state.sort);
+    renderColumnPanel()
+    updatePageInfo(total);
 }
+
+function updatePageInfo(total) {
+    const info = document.getElementById("pageInfo");
+    if (!info) return;
+
+    const max = Math.max(1, Math.ceil(total / state.pageSize));
+    if (state.page > max) {
+        setState({ page: max });
+        return;
+    }
+    info.textContent = `Page ${state.page} / ${max}`;
+}
+
 /* ---------- DATA PIPELINE ---------- */
 function initData(csvText) {
     const clean = parseCSV(csvText);
@@ -128,18 +196,23 @@ function initData(csvText) {
 
     const columns = Object.keys(typed[0] ?? {});
     const columnMeta = Object.fromEntries(
-        columns.map(c => [c, { visible: true }])
+        columns.map((c) => [c, { visible: true }]),
     );
 
     setState({
         data: typed,
         columns,
         columnMeta,
-        page: 1
+        page: 1,
     });
 }
-const uploadBtn = document.getElementById("uploadBtn");
 
+const searchInput = document.getElementById("searchInput");
+const pageSizeSel = document.getElementById("pageSize");
+const resetBtn = document.getElementById("resetBtn");
+const uploadBtn = document.getElementById("uploadBtn");
+const thead = document.getElementById("dthead");
+resetBtn.addEventListener("click", reset);
 uploadBtn.addEventListener("change", async (e) => {
     try {
         // const [handle] = await showOpenFilePicker();
@@ -147,11 +220,68 @@ uploadBtn.addEventListener("change", async (e) => {
         if (!file) return;
         const data = await file.text();
 
-
         initData(data);
-
     } catch (err) {
         console.error(err);
     }
 });
 
+thead.addEventListener("click", (e) => {
+    const th = e.target.closest("th");
+    if (!th) return;
+
+    const col = th.dataset.col;
+    if (!col) return;
+
+    toggleSort(col);
+});
+
+searchInput.addEventListener("input", (e) => {
+    setGlobalFilter(e.target.value);
+});
+
+pageSizeSel.addEventListener("change", (e) => {
+    setState({ pageSize: Number(e.target.value), page: 1 });
+});
+
+document.body.addEventListener("click", (e) => {
+    if (e.target.id === "prevPage") {
+        if (state.page > 1) setState({ page: state.page - 1 });
+    }
+
+    if (e.target.id === "nextPage") {
+        const total = getViewData().total;
+        const max = Math.ceil(total / state.pageSize);
+        if (state.page < max) setState({ page: state.page + 1 });
+    }
+
+    if (e.target.id === "resetBtn") {
+        reset();
+    }
+});
+
+const toggleColumnsBtn = document.getElementById("toggleColumns");
+const columnPanel = document.getElementById("columnPanel");
+
+toggleColumnsBtn.addEventListener("click",()=>{
+  columnPanel.hidden = !columnPanel.hidden;
+});
+
+
+document.addEventListener("change",(e)=>{
+  const el = e.target.closest("[data-action]");
+  if(!el) return;
+
+  if(el.dataset.action==="toggleColumn"){
+    toggleColumn(el.dataset.col);
+  }
+});
+
+document.addEventListener("click",(e)=>{
+  const el = e.target.closest("[data-action]");
+  if(!el) return;
+
+  if(el.dataset.action==="showAllColumns"){
+    showAllColumns();
+  }
+});

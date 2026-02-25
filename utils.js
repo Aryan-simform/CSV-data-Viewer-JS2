@@ -1,3 +1,9 @@
+export function formatColumnLabel(col){
+  return col
+    .replace(/([a-z])([A-Z])/g,"$1 $2")
+    .replace(/_/g," ")
+    .replace(/\b\w/g,c=>c.toUpperCase());
+}
 
 export function parseCSV(csvString) {
     const rows = csvString.split("\n").filter((r) => r.trim() !== "");
@@ -89,22 +95,28 @@ export function inferTypes(rows) {
     );
 }
 export function renderTable(rows, columns,sort) {
-    const table = document.getElementById("datatable");
-    table.innerHTML = "";
-
+    const tableHead = document.getElementById("dthead");
+    const tableBody = document.getElementById("dtbody");
+    tableHead.innerHTML = "";
+    tableBody.innerHTML = "";
     const headerRow = document.createElement("tr");
 
     columns.forEach(col => {
         const th = document.createElement("th");
-        th.textContent = col.replace("_", " ");
-        if(sort.column === col)th.textContent += sort.direction ==="asc" ? " &darr": " &uarr";  
+        const lebel = document.createElement("span");
+        const icon = document.createElement("span");
+        lebel.textContent = formatColumnLabel(col);
+        if(sort.column === col)icon.innerHTML+=sort.direction ==="asc" ? " &uarr;": " &darr;";
+        th.append(lebel,icon);
+        // th.addEventListener("click",()=> actions.onSort(col));
+        th.dataset.col = col;
         headerRow.appendChild(th);
     });
 
-    table.appendChild(headerRow);
+    tableHead.appendChild(headerRow);
 
     const frag = document.createDocumentFragment();
-
+   
     rows.forEach(row => {
         const tr = document.createElement("tr");
 
@@ -117,5 +129,5 @@ export function renderTable(rows, columns,sort) {
         frag.appendChild(tr);
     });
 
-    table.appendChild(frag);
+    tableBody.appendChild(frag);
 }
