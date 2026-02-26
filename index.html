@@ -16,7 +16,7 @@
 
         <select id="pageSize">
             <option value="10">10</option>
-            <option value="20" >20</option>
+            <option value="20">20</option>
             <option value="25" selected>25</option>
             <option value="50">50</option>
             <option value="100">100</option>
@@ -28,18 +28,18 @@
 
         <button id="resetBtn">Reset</button>
         <button id="exportCSV" name="exportCSV" data-action="exportCSV">Export CSV</button>
-        <button id="exportJSON" >Export JSON</button>
+        <button id="exportJSON">Export JSON</button>
         <div class="column-control">
             <button id="toggleColumns">Columns ▾</button>
 
             <div id="columnPanel" hidden>
-            <div class="column-actions">
-            <button data-action="showAllColumns">Show all</button>
-            <div id="columnList"></div>
-        </div>
+                <div class="column-actions">
+                    <button data-action="showAllColumns">Show all</button>
+                    <div id="columnList"></div>
+                </div>
 
-  </div>
-</div>
+            </div>
+        </div>
     </div>
     <section>
         <h3>Data Table</h3>
@@ -50,7 +50,14 @@
         </table>
     </section>
 
+    <div id="groupControls">
+        <select id="groupBy"></select>
+        <select id="metricBy"></select>
+        <button id="runGroup">Analyze</button>
+    </div>
 
+    <div id="statsPanel"></div>
+    <div id="groupPanel"></div>
 </body>
 <script type="module" src="script.js"></script>
 

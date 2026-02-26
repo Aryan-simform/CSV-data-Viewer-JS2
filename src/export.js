@@ -1,5 +1,5 @@
 import { state } from "./state.js";
-import { filterRows,visibleColumns } from "./selectors.js";
+import { filterRows, visibleColumns } from "./selectors.js";
 
 //export functions 
 function getExportRows() {

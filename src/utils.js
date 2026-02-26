@@ -1,8 +1,8 @@
-export function formatColumnLabel(col){
-  return col
-    .replace(/([a-z])([A-Z])/g,"$1 $2")
-    .replace(/_/g," ")
-    .replace(/\b\w/g,c=>c.toUpperCase());
+export function formatColumnLabel(col) {
+    return col
+        .replace(/([a-z])([A-Z])/g, "$1 $2")
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, c => c.toUpperCase());
 }
 
 export function parseCSV(csvString) {
@@ -94,7 +94,7 @@ export function inferTypes(rows) {
         )
     );
 }
-export function renderTable(rows, columns,sort) {
+export function renderTable(rows, columns, sort) {
     const tableHead = document.getElementById("dthead");
     const tableBody = document.getElementById("dtbody");
     tableHead.innerHTML = "";
@@ -106,8 +106,8 @@ export function renderTable(rows, columns,sort) {
         const lebel = document.createElement("span");
         const icon = document.createElement("span");
         lebel.textContent = formatColumnLabel(col);
-        if(sort.column === col)icon.innerHTML+=sort.direction ==="asc" ? " &uarr;": " &darr;";
-        th.append(lebel,icon);
+        if (sort.column === col) icon.innerHTML += sort.direction === "asc" ? " &uarr;" : " &darr;";
+        th.append(lebel, icon);
         // th.addEventListener("click",()=> actions.onSort(col));
         th.dataset.col = col;
         headerRow.appendChild(th);
@@ -116,7 +116,7 @@ export function renderTable(rows, columns,sort) {
     tableHead.appendChild(headerRow);
 
     const frag = document.createDocumentFragment();
-   
+
     rows.forEach(row => {
         const tr = document.createElement("tr");
 
@@ -131,3 +131,5 @@ export function renderTable(rows, columns,sort) {
 
     tableBody.appendChild(frag);
 }
+
+

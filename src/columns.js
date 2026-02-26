@@ -1,8 +1,8 @@
-import { state,setState } from "./state.js";
+import { state, setState } from "./state.js";
 import { formatColumnLabel } from "./utils.js";
 export function showAllColumns() {
     const meta = Object.fromEntries(
-        state.columns.map(c => [c, { visible: true }])
+        state.columns.map((c) => [c, { visible: true }]),
     );
 
     setState({ columnMeta: meta });
@@ -11,8 +11,9 @@ export function showAllColumns() {
 export function toggleColumn(col) {
     const current = state.columnMeta[col]?.visible !== false;
 
-    const visibleCount = Object.values(state.columnMeta)
-        .filter(m => m.visible !== false).length;
+    const visibleCount = Object.values(state.columnMeta).filter(
+        (m) => m.visible !== false,
+    ).length;
 
     if (visibleCount === 1 && current) return;
 
@@ -21,9 +22,9 @@ export function toggleColumn(col) {
             ...state.columnMeta,
             [col]: {
                 ...state.columnMeta[col],
-                visible: !current
-            }
-        }
+                visible: !current,
+            },
+        },
     });
 }
 export function renderColumnPanel() {
@@ -32,7 +33,7 @@ export function renderColumnPanel() {
 
     list.innerHTML = "";
 
-    state.columns.forEach(col => {
+    state.columns.forEach((col) => {
         const label = document.createElement("label");
 
         const input = document.createElement("input");
@@ -46,4 +47,3 @@ export function renderColumnPanel() {
         list.appendChild(label);
     });
 }
-

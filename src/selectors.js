@@ -65,8 +65,10 @@ export function visibleColumns() {
     return state.columns.filter((c) => state.columnMeta[c]?.visible !== false);
 }
 
-export function getAnalysisRows(){
+export function getAnalysisRows() {
     let rows = state.data;
-    rows= filterRows(rows)
+    rows = filterRows(rows);
+    // console.log(rows,filterRows(rows));
+
     return rows;
 }
