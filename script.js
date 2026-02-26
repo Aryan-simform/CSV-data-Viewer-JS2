@@ -1,263 +1,125 @@
 "use strict";
-import { inferTypes, parseCSV, renderTable,formatColumnLabel } from "./utils.js";
-//Date format is  YYYY-MM-DD
 
-const state = {
-    data: [],
-    columns: [],
-    page: 1,
-    pageSize: 25,
-    columnMeta: {
+import { parseCSV, inferTypes, renderTable } from "./src/utils.js";
 
-    }, // future: visibility, width, order
-    sort: {
-        column: "",
-        direction: "", //"asc" | "desc"
-    },
-    globalFilter: "",
-};
-function reset() {
-    setState({
-        sort: { column: "", direction: "" },
-        globalFilter: "",
-        page: 1,
-        pageSize: 25,
-    });
-}
-function paginate(rows) {
-    const start = (state.page - 1) * state.pageSize;
-    return rows.slice(start, start + state.pageSize);
+import { state, setState, bindRender } from "./src/state.js"
+import { getViewData } from "./src/selectors.js";
+import { renderColumnPanel,toggleColumn } from "./src/columns.js";
+import { getColumnStatistics } from "./src/statistics.js";
+import { exportCSV, exportJSON } from "./src/export.js";
+
+
+// ---------- actions ----------
+
+function reset(){
+  setState({
+    sort:{column:"",direction:""},
+    globalFilter:"",
+    page:1,
+    pageSize:25
+  });
 }
 
-function showAllColumns(){
-  const meta = Object.fromEntries(
-    state.columns.map(c=>[c,{visible:true}])
-  );
-
-  setState({columnMeta:meta});
+function setGlobalFilter(value){
+  setState({globalFilter:value,page:1});
 }
-function visibleColumns() {
-    return state.columns.filter((c) => state.columnMeta[c]?.visible !== false);
-}
-function toggleColumn(col){
-  const current = state.columnMeta[col]?.visible !== false;
 
-  const visibleCount = Object.values(state.columnMeta)
-    .filter(m=>m.visible!==false).length;
+function toggleSort(column){
+  const { column:current, direction } = state.sort;
 
-  if(visibleCount===1 && current) return;
+  let nextDir="asc";
+
+  if(current===column){
+    if(direction==="asc") nextDir="desc";
+    else if(direction==="desc") nextDir="";
+  }
 
   setState({
-    columnMeta:{
-      ...state.columnMeta,
-      [col]:{
-        ...state.columnMeta[col],
-        visible: !current
-      }
-    }
-  });
-}
-function renderColumnPanel(){
-  const list = document.getElementById("columnList");
-  if(!list) return;
-
-  list.innerHTML="";
-
-  state.columns.forEach(col=>{
-    const label = document.createElement("label");
-
-    const input = document.createElement("input");
-    input.type="checkbox";
-    input.checked = state.columnMeta[col]?.visible !== false;
-
-    input.dataset.action="toggleColumn";
-    input.dataset.col=col;
-
-    label.append(input," ",formatColumnLabel(col));
-    list.appendChild(label);
+    sort:{column:nextDir?column:"",direction:nextDir},
+    page:1
   });
 }
 
-function sortRows(rows) {
-    const { column, direction } = state.sort;
-    if (!column || !direction) return rows;
 
-    const sorted = [...rows].sort((a, b) => {
-        let va = a[column];
-        let vb = b[column];
+// ---------- render ----------
 
-        if (va == null) return 1;
-        if (vb == null) return -1;
+function render(){
+  const {rows,columns,total}=getViewData();
 
-        // numeric
-        if (typeof va === "number" && typeof vb === "number") {
-            return direction === "asc" ? va - vb : vb - va;
-        }
+  renderTable(rows,columns,state.sort);
+  renderColumnPanel();
 
-        // date (ISO string safe)
-        const da = Date.parse(va);
-        const db = Date.parse(vb);
-        if (!Number.isNaN(da) && !Number.isNaN(db)) {
-            return direction === "asc" ? da - db : db - da;
-        }
+  const stats = getColumnStatistics();
+  // renderStats(stats)
 
-        // string
-        return direction === "asc"
-            ? String(va).localeCompare(String(vb))
-            : String(vb).localeCompare(String(va));
-    });
-
-    return sorted;
+  updatePageInfo(total);
 }
 
-function filterRows(rows) {
-    const q = state.globalFilter.trim().toLowerCase();
-    if (!q) return rows;
+bindRender(render);
 
-    return rows.filter((row) => {
-        return state.columns.some((col) => {
-            const v = row[col];
-            if (v == null) return false;
-            return String(v).toLowerCase().includes(q);
-        });
-    });
+function updatePageInfo(total){
+  const info=document.getElementById("pageInfo");
+  if(!info) return;
+
+  const max=Math.max(1,Math.ceil(total/state.pageSize));
+  if(state.page>max){
+    setState({page:max});
+    return;
+  }
+  info.textContent=`Page ${state.page} / ${max}`;
 }
 
-function setGlobalFilter(value) {
-    setState({
-        globalFilter: value,
-        page: 1,
-    });
+
+// ---------- data init ----------
+
+function initData(csvText){
+  const clean=parseCSV(csvText);
+  const typed=inferTypes(clean);
+
+  const columns=Object.keys(typed[0]??{});
+  const columnMeta=Object.fromEntries(
+    columns.map(c=>[c,{visible:true}])
+  );
+
+  setState({data:typed,columns,columnMeta,page:1});
 }
 
-function toggleSort(column) {
-    const { column: current, direction } = state.sort;
 
-    let nextDir = "asc";
+// ---------- DOM wiring ----------
 
-    if (current === column) {
-        if (direction === "asc") nextDir = "desc";
-        else if (direction === "desc") nextDir = "";
-    }
-
-    setState({
-        sort: {
-            column: nextDir ? column : "",
-            direction: nextDir,
-        },
-        page: 1,
-    });
-}
-
-/* ---------- STATE ---------- */
-function setState(patch) {
-    Object.assign(state, patch);
-    render();
-}
-
-/* ---------- SELECTOR ---------- */
-function getViewData() {
-    let rows = state.data;
-
-    rows = filterRows(rows);
-    rows = sortRows(rows);
-    const paged = paginate(rows);
-
-    return {
-        rows: paged,
-        columns: visibleColumns(),
-        total: rows.length,
-    };
-}
-/* ---------- RENDER ---------- */
-function render() {
-    const { rows, columns, total } = getViewData();
-    renderTable(rows, columns, state.sort);
-    renderColumnPanel()
-    updatePageInfo(total);
-}
-
-function updatePageInfo(total) {
-    const info = document.getElementById("pageInfo");
-    if (!info) return;
-
-    const max = Math.max(1, Math.ceil(total / state.pageSize));
-    if (state.page > max) {
-        setState({ page: max });
-        return;
-    }
-    info.textContent = `Page ${state.page} / ${max}`;
-}
-
-/* ---------- DATA PIPELINE ---------- */
-function initData(csvText) {
-    const clean = parseCSV(csvText);
-    const typed = inferTypes(clean);
-
-    const columns = Object.keys(typed[0] ?? {});
-    const columnMeta = Object.fromEntries(
-        columns.map((c) => [c, { visible: true }]),
-    );
-
-    setState({
-        data: typed,
-        columns,
-        columnMeta,
-        page: 1,
-    });
-}
-
-const searchInput = document.getElementById("searchInput");
-const pageSizeSel = document.getElementById("pageSize");
-const resetBtn = document.getElementById("resetBtn");
-const uploadBtn = document.getElementById("uploadBtn");
-const thead = document.getElementById("dthead");
-resetBtn.addEventListener("click", reset);
-uploadBtn.addEventListener("change", async (e) => {
-    try {
-        // const [handle] = await showOpenFilePicker();
-        const file = await e.target.files[0];
-        if (!file) return;
-        const data = await file.text();
-
-        initData(data);
-    } catch (err) {
-        console.error(err);
-    }
+document.getElementById("uploadBtn")
+.addEventListener("change",async e=>{
+  const file=e.target.files[0];
+  if(!file) return;
+  const text=await file.text();
+  initData(text);
 });
 
-thead.addEventListener("click", (e) => {
-    const th = e.target.closest("th");
-    if (!th) return;
+document.getElementById("searchInput")
+.addEventListener("input",e=>setGlobalFilter(e.target.value));
 
-    const col = th.dataset.col;
-    if (!col) return;
-
-    toggleSort(col);
+document.getElementById("pageSize")
+.addEventListener("change",e=>{
+  setState({pageSize:Number(e.target.value),page:1});
 });
 
-searchInput.addEventListener("input", (e) => {
-    setGlobalFilter(e.target.value);
+document.getElementById("dthead")
+.addEventListener("click",e=>{
+  const th=e.target.closest("th");
+  if(!th) return;
+  toggleSort(th.dataset.col);
 });
 
-pageSizeSel.addEventListener("change", (e) => {
-    setState({ pageSize: Number(e.target.value), page: 1 });
-});
+document.body.addEventListener("click",e=>{
+  if(e.target.id==="prevPage" && state.page>1)
+    setState({page:state.page-1});
 
-document.body.addEventListener("click", (e) => {
-    if (e.target.id === "prevPage") {
-        if (state.page > 1) setState({ page: state.page - 1 });
-    }
+  if(e.target.id==="nextPage")
+    setState({page:state.page+1});
 
-    if (e.target.id === "nextPage") {
-        const total = getViewData().total;
-        const max = Math.ceil(total / state.pageSize);
-        if (state.page < max) setState({ page: state.page + 1 });
-    }
-
-    if (e.target.id === "resetBtn") {
-        reset();
-    }
+  if(e.target.id==="resetBtn") reset();
+  if(e.target.id==="exportCSV") exportCSV();
+  if(e.target.id==="exportJSON") exportJSON();
 });
 
 const toggleColumnsBtn = document.getElementById("toggleColumns");
