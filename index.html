@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css" />
+    <title>CSV Data Explorer</title>
+</head>
+
+<body>
+    <div class="controls">
+        <input type="file" id="uploadBtn" />
+
+        <input type="text" id="searchInput" placeholder="Search…" />
+
+        <select id="pageSize">
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="25" selected>25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+        </select>
+
+        <button id="prevPage">Prev</button>
+        <span id="pageInfo"></span>
+        <button id="nextPage">Next</button>
+
+        <button id="resetBtn">Reset</button>
+        <button id="exportCSV" name="exportCSV" data-action="exportCSV">Export CSV</button>
+        <button id="exportJSON">Export JSON</button>
+        <div class="column-control">
+            <button id="toggleColumns">Columns ▾</button>
+
+            <div id="columnPanel" hidden>
+                <div class="column-actions">
+                    <button data-action="showAllColumns">Show all</button>
+                    <div id="columnList"></div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    <section>
+        <h3>Data Table</h3>
+        <table id="datatable">
+            <thead id="dthead"></thead>
+            <tbody id="dtbody"></tbody>
+            <tfoot id="dtfoot"></tfoot>
+        </table>
+    </section>
+    <h3>statistics</h3>
+    </h3>
+    <div id="groupControls">
+        <select id="groupBy"></select>
+        <select id="metricBy"></select>
+        <button id="runGroup">Analyze</button>
+    </div>
+
+    <div id="statsPanel"></div>
+    <div id="groupPanel"></div>
+</body>
+<script type="module" src="script.js"></script>
+
+</html>
